@@ -1,4 +1,5 @@
 .nextflow*
+tmp/
 *.pyc
 *.idx
 *.egg-info/

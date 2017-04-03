@@ -13,7 +13,7 @@ vim: syntax=groovy
  $ nextflow main.nf
  
  Pipeline parameters
- --fastqdir
+ --fastqpath
  --trim
  --trim-adapters
  --trim-truncate
@@ -29,7 +29,7 @@ vim: syntax=groovy
 // Pipeline version
 version = 0.1
 
-params.fastqdir = "${baseDir}/example/"
+params.fastqpath = "${baseDir}/example/P*/*/*R{1,2}_001.fastq.gz"
 params.trim_adapters = "${baseDir}/resources/nextera_linkers.txt"
 params.trim = true
 params.trim_truncate = 100
@@ -39,7 +39,7 @@ params.outdir = "$PWD"
 
 
 log.info "### RADQC pipeline v${version}"
-log.info "fastqdir = ${params.fastqdir}"
+log.info "fastqpath = ${params.fastqpath}"
 log.info "trim = ${params.trim}"
 log.info "trim_adapters = ${params.trim_adapters}"
 log.info "trim_truncate = ${params.trim_truncate}"
@@ -52,8 +52,8 @@ log.info "outdir = ${params.outdir}"
  */
 Channel
     // TODO: replace with a better pattern
-    .fromFilePairs( "${params.fastqdir}/P*/*/*R{1,2}_001.fastq.gz", size: -1 )
-    .ifEmpty { exit 1, "Cannot find any reads matching: ${params.fastqdir}" }
+    .fromFilePairs( "${params.fastqpath}", size: -1 )
+    .ifEmpty { exit 1, "Cannot find any reads matching: ${params.fastqpath}" }
     .into { read_files_fastqc; read_files_trim }
 
 
