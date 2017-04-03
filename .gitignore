@@ -1,0 +1,10 @@
+.nextflow*
+*.pyc
+*.idx
+*.egg-info/
+build/
+.DS_Store
+.#*
+.ropeproject
+.env
+*.swp
