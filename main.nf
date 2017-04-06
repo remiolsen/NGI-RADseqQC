@@ -14,7 +14,6 @@ vim: syntax=groovy
  
  Pipeline parameters
  --fastqpath
- --trim
  --trim-adapters
  --trim-truncate
  --enz
@@ -31,7 +30,6 @@ version = 0.1
 
 params.fastqpath = "${baseDir}/example/P*/*/*R{1,2}_001.fastq.gz"
 params.trim_adapters = "${baseDir}/resources/nextera_linkers.txt"
-params.trim = true
 params.trim_truncate = 100
 params.enz = "ecoRI"
 params.outdir = "$PWD"
@@ -40,7 +38,6 @@ params.outdir = "$PWD"
 
 log.info "### RADQC pipeline v${version}"
 log.info "fastqpath = ${params.fastqpath}"
-log.info "trim = ${params.trim}"
 log.info "trim_adapters = ${params.trim_adapters}"
 log.info "trim_truncate = ${params.trim_truncate}"
 log.info "enz = ${params.enz}"
@@ -73,41 +70,29 @@ process fastqc {
     """
 }
 
-if(params.trim) {
 
-    process trimmomatic {
-        tag "$name"
-        publishDir  "${params.outdir}/trimmed_reads", mode: 'copy'
-        
-        input:
-        set val(name), file(reads) from read_files_trim
+process trimmomatic {
+    tag "$name"
+    publishDir "${params.outdir}/trimmed_reads", mode: 'copy'
+    
+    input:
+    set val(name), file(reads) from read_files_trim
 
-        output:
-        //output unpaired as well
-        set val(name), file("*P.fastq.gz") into read_files_flash, read_files_jellyfish, read_files_concat
-        file "*_trim.out"
+    output:
+    //consider to output unpaired as well
+    set val(name), file("*P.fastq.gz") into read_files_flash, read_files_jellyfish, read_files_concat
+    file "*_trim.out"
 
-        when:
-        params.trim == true
-
-        script:
-        """
-        java -jar \$TRIMMOMATIC_HOME/trimmomatic.jar PE \
-        -threads 1 \
-        -trimlog ${name}_trim.log \
-        -baseout ${name}.fastq.gz \
-        -phred33 $reads \
-        ILLUMINACLIP:${params.trim_adapters}:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 \
-        MINLEN:${params.trim_truncate} CROP:${params.trim_truncate} 2> ${name}_trim.out 
-        """
-
-    }
-
-}
-else {
-    read_files = Channel.fromFilePairs( "${params.fastqdir}/P*/*/*R{1,2}_001.fastq.gz", size: -1 )
-        .ifEmpty { exit 1, "Cannot find any reads matching: ${params.fastqdir}" }
-        .into { read_files_flash; read_files_jellyfish; read_files_concat }
+    script:
+    """
+    java -jar \$TRIMMOMATIC_HOME/trimmomatic.jar PE \
+    -threads 1 \
+    -trimlog ${name}_trim.log \
+    -baseout ${name}.fastq.gz \
+    -phred33 $reads \
+    ILLUMINACLIP:${params.trim_adapters}:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 \
+    MINLEN:${params.trim_truncate} CROP:${params.trim_truncate} 2> ${name}_trim.out 
+    """
 
 }
 
@@ -122,7 +107,6 @@ process flash {
     output:
     file "*_flash.txt" into flash_results
 
-    // TODO: specify threads
     script:
     """
     flash -t ${task.cpus} -M ${params.trim_truncate} -c $reads 2> ${name}_flash.txt > /dev/null
@@ -133,17 +117,16 @@ process flash {
 process jellyfish {
     tag "$name"
     publishDir "${params.outdir}/jellyfish", mode: 'copy'
-    
+
     input:
     set val(name), file(reads) from read_files_jellyfish
 
     output:
     file "*.hist" into jellyfish_results
 
-    //TODO: specify threads & mem
     script:
     """
-    cat $reads | gzip -c -d | jellyfish count -o ${name}.jf -m 25 -s 1000M -t ${task.cpus} -C /dev/fd/0
+    cat $reads | gzip -c -d | jellyfish count -o ${name}.jf -m 25 -s ${task.memory.toBytes()} -t ${task.cpus} -C /dev/fd/0
     jellyfish histo -o ${name}.hist -f ${name}.jf
     """
 
@@ -151,7 +134,7 @@ process jellyfish {
 
 process concat_reads {
     tag "$name"
-    publishDir  "${params.outdir}/concatenated_reads", mode: 'copy'
+    publishDir "${params.outdir}/concatenated_reads", mode: 'copy'
 
     input:
     set val(name), file(reads) from read_files_concat
@@ -169,24 +152,21 @@ process concat_reads {
 
 process process_radtags {
     tag "$name"
-    publishDir "${params.outdir}/process_radtags", mode: 'copy'
+    publishDir "${params.outdir}/process_radtags", mode: 'copy',
+    saveAs: {it == 'process_radtags.log' ? name+'_process_radtags.log' : it}
 
     input:
     set val(name), file(reads) from merged_reads
 
     output:
-    stdout into process_logs 
+    file "*process_radtags.log"
     file "*.merged.fq.gz" into processed_reads
 
     script:
     """
     process_radtags -i gzfastq -f $reads -e ${params.enz} -c -q -r -o .
-    cat process_radtags.log
     """
 }
-process_logs
-  .collectFile(name: file("process_radtags.log"), storeDir: "process_radtags")
-  .println { "Result saved to file: $it" }
 
 
 process denovo_stacks {
