@@ -19,7 +19,8 @@ vim: syntax=groovy
  --trim-truncate
  --enz
  --outdir
- 
+ --project
+ --clusterOptions 
 ----------------------------------------------------------------------------------------
 */
 /*
@@ -35,7 +36,8 @@ params.trim = true
 params.trim_truncate = 100
 params.enz = "ecoRI"
 params.outdir = "$PWD"
-
+params.project = "b2013064"
+//params.clusterOptions
 
 
 log.info "### RADQC pipeline v${version}"
@@ -45,7 +47,7 @@ log.info "trim_adapters = ${params.trim_adapters}"
 log.info "trim_truncate = ${params.trim_truncate}"
 log.info "enz = ${params.enz}"
 log.info "outdir = ${params.outdir}"
-
+log.info "project = ${params.project}"
 
 /*
  * Always start with fastqc 
