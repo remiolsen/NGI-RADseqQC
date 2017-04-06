@@ -81,8 +81,9 @@ process trimmomatic {
     set val(name), file(reads) from read_files_trim
 
     output:
-    //consider to output unpaired as well
-    set val(name), file("*P.fastq.gz") into read_files_flash, read_files_jellyfish, read_files_concat
+    //consider to output unpaired as well to jellyfish
+    set val(name), file("*P.fastq.gz") into read_files_flash, read_files_jellyfish, readP_files_concat
+    set val(name), file("*U.fastq.gz") into readU_files_concat
     file "*_trim.out"
 
     script:
@@ -139,14 +140,15 @@ process concat_reads {
     publishDir "${params.outdir}/concatenated_reads", mode: 'copy'
 
     input:
-    set val(name), file(reads) from read_files_concat
+    set val(name), file(readsP) from readP_files_concat
+    set val(name), file(readsU) from readU_files_concat
 
     output:
     set val(name), file("*.merged.fastq.gz") into merged_reads 
 
     script:
     """
-    cat $reads > ${name}.merged.fastq.gz
+    cat $readsP $readsU > ${name}.merged.fastq.gz
     """
 
 } 
