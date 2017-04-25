@@ -116,7 +116,7 @@ process flash {
     """
 
 }
-
+/*
 process jellyfish {
     tag "$name"
     publishDir "${params.outdir}/jellyfish", mode: 'copy'
@@ -129,12 +129,12 @@ process jellyfish {
 
     script:
     """
-    cat $reads | gzip -c -d | jellyfish count -o ${name}.jf -m 25 -s ${task.memory.toBytes()} -t ${task.cpus} -C /dev/fd/0
+    cat $reads | gzip -c -d | jellyfish count -o ${name}.jf -m 25 -s ${Math.round(0.1 * task.memory.toBytes() / 1024 / 1024)}M --bf-size ${Math.round(0.8 * task.memory.toBytes() / 1024 / 1024)}M -t ${task.cpus} -C /dev/fd/0
     jellyfish histo -o ${name}.hist -f ${name}.jf
     """
 
 }
-
+*/
 process concat_reads {
     tag "$name"
     publishDir "${params.outdir}/concatenated_reads", mode: 'copy'
