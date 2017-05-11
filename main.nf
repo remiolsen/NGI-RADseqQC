@@ -35,6 +35,9 @@ params.trim_truncate = 100
 params.enz = "ecoRI"
 params.outdir = "$PWD"
 params.project = "b2013064"
+params.small_m = 3
+params.big_m = 2
+params.small_n = 1
 //params.clusterOptions
 
 
@@ -45,6 +48,7 @@ log.info "trim_truncate = ${params.trim_truncate}"
 log.info "enz = ${params.enz}"
 log.info "outdir = ${params.outdir}"
 log.info "project = ${params.project}"
+log.info "denovo_map.pl to use parameters: -m ${params.small_m} -M ${params.big_m} -n ${params.small_n}"
 
 /*
  * Always start with fastqc 
@@ -189,6 +193,6 @@ process denovo_stacks {
     s_string = ""
     reads.each {s_string = s_string + "-s $it "}
     """
-    denovo_map.pl $s_string -o . -m 3 -M 2 -N 4 -S -b 1 -n 2 -T ${task.cpus}
+    denovo_map.pl $s_string -o . -m ${params.small_m} -M ${params.big_m} -n ${params.small_n} -S -b 1 -n 2 -T ${task.cpus}
     """
 }
