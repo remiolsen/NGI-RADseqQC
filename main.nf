@@ -27,7 +27,7 @@ vim: syntax=groovy
  */
 
 // Pipeline version
-version = 0.1
+version = 0.2
 
 params.fastqpath = "${baseDir}/example/P*/*/*R{1,2}_001.fastq.gz"
 params.trim_adapters = "${baseDir}/resources/nextera_linkers.txt"
@@ -38,7 +38,7 @@ params.project = "b2013064"
 params.small_m = 3
 params.big_m = 2
 params.small_n = 1
-//params.clusterOptions
+
 
 
 log.info "### RADQC pipeline v${version}"
@@ -50,31 +50,13 @@ log.info "outdir = ${params.outdir}"
 log.info "project = ${params.project}"
 log.info "denovo_map.pl to use parameters: -m ${params.small_m} -M ${params.big_m} -n ${params.small_n}"
 
-/*
- * Always start with fastqc 
- */
-Channel
+
+read_files_trim = Channel
     // TODO: replace with a better pattern
     .fromFilePairs( "${params.fastqpath}", size: -1 )
     .ifEmpty { exit 1, "Cannot find any reads matching: ${params.fastqpath}" }
-    .into { read_files_fastqc; read_files_trim }
 
 
-process fastqc {
-    tag "$name"
-    publishDir "${params.outdir}/fastqc", mode: 'copy'
-
-    input:
-    set val(name), file(reads) from read_files_fastqc
-
-    output:
-    file "*_fastqc.{zip,html}"
-
-    script:
-    """
-    fastqc -q $reads
-    """
-}
 
 
 process trimmomatic {
@@ -120,25 +102,7 @@ process flash {
     """
 
 }
-/*
-process jellyfish {
-    tag "$name"
-    publishDir "${params.outdir}/jellyfish", mode: 'copy'
 
-    input:
-    set val(name), file(reads) from read_files_jellyfish
-
-    output:
-    file "*.hist" into jellyfish_results
-
-    script:
-    """
-    cat $reads | gzip -c -d | jellyfish count -o ${name}.jf -m 25 -s ${Math.round(0.1 * task.memory.toBytes() / 1024 / 1024)}M --bf-size ${Math.round(0.8 * task.memory.toBytes() / 1024 / 1024)}M -t ${task.cpus} -C /dev/fd/0
-    jellyfish histo -o ${name}.hist -f ${name}.jf
-    """
-
-}
-*/
 process concat_reads {
     tag "$name"
     publishDir "${params.outdir}/concatenated_reads", mode: 'copy'
@@ -168,11 +132,30 @@ process process_radtags {
 
     output:
     file "*process_radtags.log"
-    file "*.merged.fq.gz" into processed_reads
+    file "*.merged.fq.gz" into processed_reads, read_files_fastqc
 
     script:
     """
     process_radtags -i gzfastq -f $reads -e ${params.enz} -c -q -r -o .
+    """
+}
+
+/*
+    If you are here, you should already have run FastQC on the raw input
+*/
+process fastqc {
+    tag "$reads"
+    publishDir "${params.outdir}/fastqc", mode: 'copy'
+
+    input:
+    file(reads) from read_files_fastqc
+
+    output:
+    file "*_fastqc.{zip,html}"
+
+    script:
+    """
+    fastqc -q $reads
     """
 }
 
@@ -181,7 +164,7 @@ process denovo_stacks {
     publishDir "${params.outdir}/denovo_stacks", mode: 'copy'
     
     input:
-    file(reads: 'process_radtags/*.fq.gz') from processed_reads.toList()
+    file(reads) from processed_reads.toList()
 
     output:
     file "*.tsv.gz"
@@ -191,7 +174,7 @@ process denovo_stacks {
 
     script:
     s_string = ""
-    reads.each {s_string = s_string + "-s $it "}
+    reads.sort(); reads.each {s_string = s_string + "-s $it "}
     """
     denovo_map.pl $s_string -o . -m ${params.small_m} -M ${params.big_m} -n ${params.small_n} -S -b 1 -n 2 -T ${task.cpus}
     """

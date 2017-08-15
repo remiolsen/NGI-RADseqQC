@@ -4,7 +4,6 @@ A work-in-progress pipeline for QC of genotyping-by-sequencing (GBS) generated b
 * FastQC
 * Adapter trimming using trimmomatic
 * Flash to calculate % read overlap
-* Jellyfish (testing for now)
 * Stacks de novo pipeline with the most lenient parameters
 
 ### Implementation
