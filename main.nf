@@ -36,13 +36,17 @@ version = 0.2
 params.fastqpath = "${baseDir}/example/P*/*/*R{1,2}_001.fastq.gz"
 params.trim_adapters = "${baseDir}/resources/nextera_linkers.txt"
 params.trim_truncate = 100
+params.trimmomatic_home = null
 params.enz = "ecoRI"
 params.outdir = "$PWD"
 params.project = "b2013064"
 params.small_m = 3
 params.big_m = 2
 params.small_n = 1
-params.clusterOptions = ""
+params.clusterOptions = null
+if (params.trimmomatic_home) {
+    env = {TRIMMOMATIC_HOME = params.trimmomatic_home}
+}
 
 log.info "###"
 log.info "###    NGI RADQC pipeline v${version}"
@@ -51,7 +55,6 @@ params.each { key, value ->
     log.info "$key = $value"
 }
 log.info "denovo_map.pl to use parameters: -m ${params.small_m} -M ${params.big_m} -n ${params.small_n}"
-
 
 read_files_trim = Channel
     // TODO: replace with a better pattern
