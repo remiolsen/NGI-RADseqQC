@@ -19,7 +19,11 @@ vim: syntax=groovy
  --enz
  --outdir
  --project
- --clusterOptions 
+ --clusterOptions
+ --small-m
+ --big-m
+ --small-n
+
 ----------------------------------------------------------------------------------------
 */
 /*
@@ -38,16 +42,14 @@ params.project = "b2013064"
 params.small_m = 3
 params.big_m = 2
 params.small_n = 1
+params.clusterOptions = ""
 
-
-
-log.info "### RADQC pipeline v${version}"
-log.info "fastqpath = ${params.fastqpath}"
-log.info "trim_adapters = ${params.trim_adapters}"
-log.info "trim_truncate = ${params.trim_truncate}"
-log.info "enz = ${params.enz}"
-log.info "outdir = ${params.outdir}"
-log.info "project = ${params.project}"
+log.info "###"
+log.info "###    NGI RADQC pipeline v${version}"
+log.info "###"
+params.each { key, value ->
+    log.info "$key = $value"
+}
 log.info "denovo_map.pl to use parameters: -m ${params.small_m} -M ${params.big_m} -n ${params.small_n}"
 
 
