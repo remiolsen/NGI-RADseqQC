@@ -41,12 +41,18 @@ def multicut(args):
         anl = Analysis(RestrictionBatch([getattr(enzymes, enz) for enz in stacks_re]), record.seq, linear=True)
         res_map = anl.full()
         len_map = {}
-
         seq_len = len(record.seq)
         for key, val in res_map.iteritems():
             # Get the fragment sizes from cut site positions
             res_len = map(lambda f: f[1]-f[0], zip([0]+val, val+[seq_len]))
-            len_map[key.__name__] = res_len
+            res_frags = map(lambda f: [(record.id, f[0], f[0]+args["readlen"]), 
+                (record.id, f[1]-args["readlen"], f[1])], zip([0]+val, val+[seq_len]))
+            res_filtered = []
+            for i in range(0,len(res_len)):
+                if res_len[i] >= args["lower_bound"] and res_len[i] <= args["upper_bound"]:
+                    res_filtered.append(res_frags[i])
+
+            len_map[key.__name__] = res_filtered
 
         for key, lens in len_map.iteritems():
             try:
@@ -56,13 +62,21 @@ def multicut(args):
 
     print("enzyme\t#size_selected_frags\trad_sites_length_(bp)\t#rad_sites\t%genome_in_rad_sites")
     for key, lens in res_map_full.iteritems():
-        ss = [i for i in lens if i >= args["lower_bound"] and i <= args["upper_bound"]]
-        nfrags = len(ss)
+        nfrags = len(lens)
         sumfrags = nfrags * int(args["reads"]) * int(args["readlen"])
         captured = (nfrags * float(args["reads"]) * float(args["readlen"]) / total_length_genome) * 100.0
         print("{}\t{}\t{}\t{}\t{:.2f}".format(
             key, nfrags, sumfrags, nfrags * int(args["reads"]), captured))
 
+    if args["bed"] is not None:
+        for key, sites in res_map_full.iteritems():
+            fname = "{}_{}_{}-{}.bed".format(args["bed"], key, args["lower_bound"], args["upper_bound"])
+            print("! writing RADsites to file {}".format(fname))
+            with open(fname, "w") as f:
+                for site2 in sites:
+                    for s in site2:
+                        line = "{}\t{}\t{}\trad\t999\t.\n".format(s[0], s[1], s[2])
+                        f.write(line)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="""
@@ -76,8 +90,9 @@ if __name__ == '__main__':
     parser.add_argument("-l", "--lower-bound", required=True, type=int, help="Lower bound for in silico size selection")
     parser.add_argument("-u", "--upper-bound", required=True, type=int, help="Upper bound for in silico size selection")
     parser.add_argument("-r", "--reads", default=2, help="Number of reads, ie. 1 for single-end sequencing and 2 for paired-end")
-    parser.add_argument("-n", "--readlen", default=126, help="Read length")
+    parser.add_argument("-n", "--readlen", type=int, default=126, help="Read length")
     parser.add_argument("-e", "--enzymes", nargs="*", metavar=("EnzI", "EnzII"), default=argparse.SUPPRESS,
                         help="Give a list of enzymes to use. If left out, I will use all the ones supported by Stacks.")
+    parser.add_argument("-b", "--bed", type=str, help="(optional) file prefix of output BED6 file(s)")
     args = vars(parser.parse_args())
     multicut(args)
